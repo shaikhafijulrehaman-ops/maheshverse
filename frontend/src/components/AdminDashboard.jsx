@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { playNotificationSound } from '../utils/audio';
 import logo from '../assets/logo.png';
-import { supabaseClient } from '../utils/supabaseClient';
+import { supabase, supabaseClient } from '../utils/supabaseClient';
 
 export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
   // Navigation tabs
@@ -907,12 +907,21 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/auth/me`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data);
-        setProfileUsername(data.username);
-        setProfileEmail(data.email);
+      if (supabaseClient.isEnabled) {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (user && !error) {
+          setCurrentUser(user);
+          setProfileUsername(user.user_metadata?.username || user.email?.split('@')[0] || '');
+          setProfileEmail(user.email || '');
+        }
+      } else {
+        const res = await fetch(`${apiBaseUrl}/api/auth/me`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data);
+          setProfileUsername(data.username);
+          setProfileEmail(data.email);
+        }
       }
     } catch (err) {
       console.error('Error fetching current user:', err);
@@ -924,34 +933,51 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
     setProfileError('');
     setProfileSuccess('');
 
-    if (!profileUsername.trim() || !profileEmail.trim()) {
-      setProfileError('Username and email are required');
+    if (!profileEmail.trim()) {
+      setProfileError('Email is required');
       return;
     }
 
     try {
-      const body = {
-        username: profileUsername.trim(),
-        email: profileEmail.trim()
-      };
-      if (profilePassword) {
-        body.password = profilePassword;
+      if (supabaseClient.isEnabled) {
+        const updates = { email: profileEmail.trim() };
+        if (profilePassword) {
+          updates.password = profilePassword;
+        }
+        if (profileUsername.trim()) {
+          updates.data = { username: profileUsername.trim() };
+        }
+
+        const { error } = await supabase.auth.updateUser(updates);
+        if (error) throw new Error(error.message);
+
+        setProfileSuccess('Profile updated successfully!');
+        setProfilePassword('');
+        fetchCurrentUser();
+      } else {
+        const body = {
+          username: profileUsername.trim(),
+          email: profileEmail.trim()
+        };
+        if (profilePassword) {
+          body.password = profilePassword;
+        }
+
+        const res = await fetch(`${apiBaseUrl}/api/auth/users/${currentUser.id || currentUser._id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Update failed');
+        }
+
+        setProfileSuccess('Profile updated successfully!');
+        setProfilePassword('');
+        fetchCurrentUser();
       }
-
-      const res = await fetch(`${apiBaseUrl}/api/auth/users/${currentUser.id || currentUser._id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Update failed');
-      }
-
-      setProfileSuccess('Profile updated successfully!');
-      setProfilePassword('');
-      fetchCurrentUser();
     } catch (err) {
       setProfileError(err.message || 'Error occurred.');
     }
