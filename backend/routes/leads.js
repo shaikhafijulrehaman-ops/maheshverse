@@ -322,6 +322,37 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// @route   PATCH /api/leads/:id
+// @desc    Update lead details (name, phone, email)
+// @access  Private
+router.patch('/:id', auth, async (req, res) => {
+  const { name, phone, email } = req.body;
+  try {
+    const lead = await db.Lead.findById(req.params.id);
+    if (!lead) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+
+    const personalInfo = {
+      ...lead.personalInfo,
+      name: name !== undefined ? name.trim() : lead.personalInfo.name,
+      phone: phone !== undefined ? phone.trim() : lead.personalInfo.phone,
+      email: email !== undefined ? email.trim() : lead.personalInfo.email
+    };
+
+    const updated = await db.Lead.findByIdAndUpdate(
+      req.params.id,
+      { personalInfo },
+      { new: true }
+    );
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   PATCH /api/leads/:id/status
 // @desc    Update lead status
 // @access  Private

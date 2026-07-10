@@ -76,6 +76,12 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
+  // Lead inline edit states
+  const [isEditingLead, setIsEditingLead] = useState(false);
+  const [editLeadName, setEditLeadName] = useState('');
+  const [editLeadPhone, setEditLeadPhone] = useState('');
+  const [editLeadEmail, setEditLeadEmail] = useState('');
+
   // Refs for tracking old notifications count to trigger sound
   const prevUnreadCountRef = useRef(0);
   const notifDropdownRef = useRef(null);
@@ -459,6 +465,58 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
       fetchAnalytics();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const startEditingLead = () => {
+    setEditLeadName(selectedLead.personalInfo.name || '');
+    setEditLeadPhone(selectedLead.personalInfo.phone || '');
+    setEditLeadEmail(selectedLead.personalInfo.email || '');
+    setIsEditingLead(true);
+  };
+
+  const handleSaveLeadEdits = async () => {
+    try {
+      if (supabaseClient.isEnabled) {
+        const { error } = await supabase
+          .from('leads')
+          .update({
+            name: editLeadName.trim(),
+            phone: editLeadPhone.trim(),
+            email: editLeadEmail.trim()
+          })
+          .eq('id', selectedLead._id || selectedLead.id);
+        if (error) throw error;
+      } else {
+        const res = await fetch(`${apiBaseUrl}/api/leads/${selectedLead._id || selectedLead.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            name: editLeadName.trim(),
+            phone: editLeadPhone.trim(),
+            email: editLeadEmail.trim()
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || 'Failed to save edits');
+        }
+      }
+      
+      const updated = {
+        ...selectedLead,
+        personalInfo: {
+          ...selectedLead.personalInfo,
+          name: editLeadName.trim(),
+          phone: editLeadPhone.trim(),
+          email: editLeadEmail.trim()
+        }
+      };
+      setSelectedLead(updated);
+      setIsEditingLead(false);
+      fetchLeads();
+    } catch (err) {
+      alert('Failed to save edits: ' + err.message);
     }
   };
 
@@ -982,6 +1040,375 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
       setProfileError(err.message || 'Error occurred.');
     }
   };
+
+  if (selectedLead) {
+    return (
+      <div className="lead-detail-page" style={{ 
+        width: '100%', 
+        minHeight: '100vh', 
+        background: 'var(--color-black-bg)', 
+        color: 'var(--color-white)',
+        display: 'flex', 
+        flexDirection: 'column',
+        position: 'relative'
+      }}>
+        {/* STICKY HEADER */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          background: 'var(--color-black-card)',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '1.25rem 2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <button 
+              className="btn btn-secondary" 
+              style={{ width: 'auto', padding: '0.5rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }} 
+              onClick={() => { setSelectedLead(null); setIsEditingLead(false); }}
+            >
+              ← Back
+            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--color-gold)' }}>
+                {isEditingLead ? 'Edit Lead Details' : selectedLead.personalInfo.name}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="badge badge-new" style={{ fontSize: '0.7rem' }}>ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}</span>
+                <span className={`badge badge-${selectedLead.status}`} style={{ fontSize: '0.7rem' }}>{selectedLead.status.toUpperCase()}</span>
+                <span className="badge" style={{ fontSize: '0.7rem', background: selectedLead.type === 'buy' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: selectedLead.type === 'buy' ? '#60a5fa' : '#34d399', border: `1px solid ${selectedLead.type === 'buy' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
+                  {selectedLead.type.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Status:</span>
+            <select
+              value={selectedLead.status}
+              onChange={(e) => handleUpdateStatus(selectedLead._id || selectedLead.id, e.target.value)}
+              className="form-control"
+              style={{ width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+            >
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+        </div>
+
+        {/* SINGLE COLUMN CONTENT - SCROLLS NATURALLY */}
+        <div style={{ 
+          flex: 1, 
+          padding: '2.5rem 2rem 6rem 2rem', 
+          maxWidth: '900px', 
+          width: '100%', 
+          margin: '0 auto', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '2rem' 
+        }}>
+          
+          {/* 1. PERSONAL DETAILS CARD */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+              Personal Details
+            </h3>
+            
+            {isEditingLead ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    value={editLeadName} 
+                    onChange={(e) => setEditLeadName(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Mobile Number</label>
+                  <input 
+                    type="tel" 
+                    className="form-control" 
+                    value={editLeadPhone} 
+                    onChange={(e) => setEditLeadPhone(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input 
+                    type="email" 
+                    className="form-control" 
+                    value={editLeadEmail} 
+                    onChange={(e) => setEditLeadEmail(e.target.value)} 
+                  />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Full Name</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.name}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Phone Number</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.phone}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Email Address</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.email || 'Not Provided'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Date Received</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{new Date(selectedLead.createdAt).toLocaleString()}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. PROPERTY DETAILS CARD */}
+          {((selectedLead.type === 'buy' && selectedLead.buyDetails) || (selectedLead.type === 'sell' && selectedLead.sellDetails)) && (
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+                Property Specifications
+              </h3>
+              
+              {selectedLead.type === 'buy' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Preferred Location</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.preferredLocation}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Type</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>BHK Requirement</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.bhk}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Location</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.location}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Type</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Construction Type</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.constructionType || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Size</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.size || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Facing Direction</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.facing || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Age</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.age || 'N/A'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Expected Selling Price</span>
+                    <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. BUDGET & REQUIREMENTS CARD */}
+          {selectedLead.type === 'buy' && selectedLead.buyDetails && (
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+                Budget & Requirements
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Min Budget</span>
+                  <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Max Budget</span>
+                  <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Loan Required</span>
+                  <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.loanRequired}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Readiness to Move</span>
+                  <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.readyToMove}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. ADDITIONAL NOTES CARD */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+              Additional Notes
+            </h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', margin: 0, lineHeight: 1.6 }}>
+              {selectedLead.type === 'buy' 
+                ? (selectedLead.buyDetails.additionalRequirements || 'No additional requirements specified.') 
+                : (selectedLead.sellDetails.additionalInformation || 'No additional information specified.')}
+            </p>
+          </div>
+
+          {/* 5. UPLOADED IMAGES CARD */}
+          {selectedLead.type === 'sell' && selectedLead.sellDetails?.images && selectedLead.sellDetails.images.length > 0 && (
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+                Uploaded Images ({selectedLead.sellDetails.images.length})
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                {selectedLead.sellDetails.images.map((imgUrl, index) => (
+                  <a key={index} href={`${apiBaseUrl}${imgUrl}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <img 
+                      src={`${apiBaseUrl}${imgUrl}`} 
+                      alt={`Property ${index + 1}`} 
+                      style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block', transition: 'transform 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 6. FOLLOW-UP HISTORY & SCHEDULE */}
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+              Follow-up Action Log
+            </h3>
+            
+            {followups.length > 0 ? (
+              <div className="timeline" style={{ marginBottom: '2.5rem' }}>
+                {followups.map(item => (
+                  <div key={item._id || item.id} className="timeline-item">
+                    <div className="timeline-dot"></div>
+                    <div className="timeline-content">
+                      <div className="timeline-date" style={{ color: 'var(--color-gold)', fontSize: '0.8rem' }}>{new Date(item.date).toLocaleString()}</div>
+                      <div className="timeline-notes" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>{item.notes}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '2.5rem' }}>No followup actions logged yet.</p>
+            )}
+
+            <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+              Schedule Next Follow-up
+            </h4>
+            <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Next Action / Followup Date</label>
+                <input 
+                  type="datetime-local" 
+                  className="form-control"
+                  value={newFollowupDate}
+                  onChange={(e) => setNewFollowupDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Reminder Note / Progress Description</label>
+                <input 
+                  type="text"
+                  className="form-control"
+                  placeholder="E.g. Scheduled site visit for Saturday 11am."
+                  value={newFollowupNotes}
+                  onChange={(e) => setNewFollowupNotes(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', alignSelf: 'flex-start' }}>
+                Schedule Note
+              </button>
+            </form>
+          </div>
+
+        </div>
+
+        {/* STICKY FOOTER ACTIONS */}
+        <div style={{
+          position: 'sticky',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 100,
+          background: 'var(--color-black-card)',
+          borderTop: '1px solid var(--color-border)',
+          padding: '1rem 2rem',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.4)'
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+            {isEditingLead ? (
+              <>
+                <button className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handleSaveLeadEdits}>
+                  Save Changes
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={() => setIsEditingLead(false)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <a href={`tel:${selectedLead.personalInfo.phone}`} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.5rem', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Call Client
+                </a>
+                <a 
+                  href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn btn-secondary" 
+                  style={{ textDecoration: 'none', padding: '0.6rem 1.5rem', fontSize: '0.9rem', borderColor: '#25D366', color: '#25D366', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  WhatsApp
+                </a>
+                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handleCopyLeadDetails}>
+                  Copy Details
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handlePrintLead}>
+                  Print
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={startEditingLead}>
+                  Edit
+                </button>
+                <button className="btn btn-danger" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem', marginLeft: 'auto' }} onClick={() => { handleDeleteLead(selectedLead._id || selectedLead.id); setSelectedLead(null); }}>
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-container">
@@ -2102,277 +2529,6 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
         )}
 
       </main>
-
-      {/* LEAD DETAIL DIALOG / TIMELINE MODAL */}
-      {selectedLead && (
-        <div className="modal-overlay" onClick={() => setSelectedLead(null)} style={{ animation: 'fadeIn 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ height: '90vh', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-            {/* STICKY HEADER */}
-            <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-black-bg)', borderBottom: '1px solid var(--color-border)', padding: '1rem 1.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <h2 style={{ fontSize: '1.4rem', margin: 0, textAlign: 'left' }}>{selectedLead.personalInfo.name}</h2>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className="badge badge-new" style={{ fontSize: '0.7rem' }}>ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}</span>
-                    <span className={`badge badge-${selectedLead.status}`} style={{ fontSize: '0.7rem' }}>{selectedLead.status.toUpperCase()}</span>
-                    <span className="badge" style={{ fontSize: '0.7rem', background: selectedLead.type === 'buy' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: selectedLead.type === 'buy' ? '#60a5fa' : '#34d399', border: `1px solid ${selectedLead.type === 'buy' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
-                      {selectedLead.type.toUpperCase()}
-                    </span>
-                    <select
-                      value={selectedLead.status}
-                      onChange={(e) => handleUpdateStatus(selectedLead._id || selectedLead.id, e.target.value)}
-                      className="form-control"
-                      style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.25rem' }}
-                    >
-                      <option value="new">New</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="won">Won</option>
-                      <option value="lost">Lost</option>
-                    </select>
-                  </div>
-                </div>
-                <button className="modal-close" onClick={() => setSelectedLead(null)} style={{ flexShrink: 0 }}>✕</button>
-              </div>
-            </div>
-
-            {/* SCROLLABLE CONTENT AREA */}
-            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-              {/* Personal Details Card */}
-              <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                  Personal Details
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Full Name</span>
-                    <strong>{selectedLead.personalInfo.name}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Phone</span>
-                    <strong>{selectedLead.personalInfo.phone}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Email</span>
-                    <strong>{selectedLead.personalInfo.email || 'Not Provided'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Date Received</span>
-                    <strong>{new Date(selectedLead.createdAt).toLocaleString()}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Property Details Card — BUY */}
-              {selectedLead.type === 'buy' && selectedLead.buyDetails && (
-                <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                    Property Details (Buy)
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Preferred Location</span>
-                      <strong>{selectedLead.buyDetails.preferredLocation}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
-                      <strong>{selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>BHK Requirement</span>
-                      <strong>{selectedLead.buyDetails.bhk}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Property Details Card — SELL */}
-              {selectedLead.type === 'sell' && selectedLead.sellDetails && (
-                <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                    Property Details (Sell)
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Location</span>
-                      <strong>{selectedLead.sellDetails.location}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
-                      <strong>{selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Construction Type</span>
-                      <strong>{selectedLead.sellDetails.constructionType || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Size</span>
-                      <strong>{selectedLead.sellDetails.size || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Facing</span>
-                      <strong>{selectedLead.sellDetails.facing || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Age</span>
-                      <strong>{selectedLead.sellDetails.age || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Expected Selling Price</span>
-                      <strong>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Budget & Requirements Card — BUY */}
-              {selectedLead.type === 'buy' && selectedLead.buyDetails && (
-                <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                    Budget & Requirements
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Min Budget</span>
-                      <strong>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Max Budget</span>
-                      <strong>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Loan Required</span>
-                      <strong>{selectedLead.buyDetails.loanRequired}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Readiness</span>
-                      <strong>{selectedLead.buyDetails.readyToMove}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Notes Card */}
-              {((selectedLead.type === 'buy' && selectedLead.buyDetails) || (selectedLead.type === 'sell' && selectedLead.sellDetails)) && (
-                <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                    Additional Notes
-                  </h4>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
-                    {selectedLead.type === 'buy'
-                      ? (selectedLead.buyDetails.additionalRequirements || 'None specified')
-                      : (selectedLead.sellDetails.additionalInformation || 'None specified')}
-                  </p>
-                </div>
-              )}
-
-              {/* Uploaded Images Card — SELL */}
-              {selectedLead.type === 'sell' && selectedLead.sellDetails?.images && selectedLead.sellDetails.images.length > 0 && (
-                <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                    Uploaded Images ({selectedLead.sellDetails.images.length})
-                  </h4>
-                  <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                    {selectedLead.sellDetails.images.map((imgUrl, index) => (
-                      <a key={index} href={`${apiBaseUrl}${imgUrl}`} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
-                        <img
-                          src={`${apiBaseUrl}${imgUrl}`}
-                          alt={`Property ${index + 1}`}
-                          style={{ height: '100px', width: '140px', objectFit: 'cover', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--color-border)', transition: 'transform 0.2s' }}
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Follow-up History Card */}
-              <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
-                  Follow-up History ({followups.length})
-                </h4>
-
-                {followups.length > 0 ? (
-                  <div className="timeline" style={{ marginBottom: '1.5rem' }}>
-                    {followups.map(item => (
-                      <div key={item._id || item.id} className="timeline-item">
-                        <div className="timeline-dot"></div>
-                        <div className="timeline-content">
-                          <div className="timeline-date">{new Date(item.date).toLocaleString()}</div>
-                          <div className="timeline-notes">{item.notes}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>No follow-up actions logged yet.</p>
-                )}
-
-                <h5 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.75rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
-                  Schedule New Follow-up
-                </h5>
-                <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Next Action / Follow-up Date</label>
-                    <input
-                      type="datetime-local"
-                      className="form-control"
-                      value={newFollowupDate}
-                      onChange={(e) => setNewFollowupDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Reminder Note / Progress Description</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="E.g. Client requested a site visit. Scheduled for Saturday 11am."
-                      value={newFollowupNotes}
-                      onChange={(e) => setNewFollowupNotes(e.target.value)}
-                    />
-                  </div>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', alignSelf: 'flex-start' }}>
-                    Schedule Note
-                  </button>
-                </form>
-              </div>
-
-            </div>
-
-            {/* STICKY FOOTER ACTIONS */}
-            <div style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--color-black-bg)', borderTop: '1px solid var(--color-border)', padding: '0.75rem 1.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
-                <a href={`tel:${selectedLead.personalInfo.phone}`} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.45rem 1rem', fontSize: '0.8rem' }}>
-                  Call
-                </a>
-                <a
-                  href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-secondary"
-                  style={{ textDecoration: 'none', padding: '0.45rem 1rem', fontSize: '0.8rem', borderColor: '#25D366', color: '#25D366' }}
-                >
-                  WhatsApp
-                </a>
-                <button className="btn btn-secondary" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }} onClick={handleCopyLeadDetails}>
-                  Copy Details
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }} onClick={handlePrintLead}>
-                  Print
-                </button>
-                <button className="btn btn-danger" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', marginLeft: 'auto' }} onClick={() => handleDeleteLead(selectedLead._id || selectedLead.id)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* MANUAL ADD LEAD DIALOG / MODAL */}
       {showAddLeadModal && (
