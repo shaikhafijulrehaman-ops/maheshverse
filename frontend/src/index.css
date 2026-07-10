@@ -882,23 +882,31 @@ textarea.form-control {
   border-radius: var(--border-radius-lg);
   width: 100%;
   max-width: 800px;
+  height: 90vh;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-card);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
 }
 
 .modal-header {
-  padding: 1.5rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid rgba(197, 168, 128, 0.15);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-shrink: 0;
+  background: var(--color-black-card);
+  z-index: 10;
 }
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .modal-close {
