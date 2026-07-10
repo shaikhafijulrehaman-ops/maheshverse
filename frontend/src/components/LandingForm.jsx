@@ -293,18 +293,13 @@ export default function LandingForm({ apiBaseUrl }) {
 
       // Success Phase Flow
       setTimeout(() => {
-        setSubmissionPhase('flip');
-        
+        setSubmissionPhase('success');
+
+        // Auto redirect/reset after 4 seconds
         setTimeout(() => {
-          setSubmissionPhase('success');
-
-          // Auto redirect/reset after 4 seconds
-          setTimeout(() => {
-            resetForm();
-          }, 4000);
-
-        }, 3000); // Wait for 3D flip animation (2 cycles of flip3d is 3s)
-      }, 1500);
+          resetForm();
+        }, 4000);
+      }, 1000);
 
     } catch (err) {
       console.error(err);
@@ -355,11 +350,49 @@ export default function LandingForm({ apiBaseUrl }) {
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '1.5rem 0' }}>
-      
+
+      <style>{`
+        @keyframes logoZoomIn {
+          0% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.55); }
+          70% { transform: scale(1.42); }
+          100% { transform: scale(1.5); opacity: 1; }
+        }
+        @keyframes logoFlip3D {
+          0% { transform: scale(1.5) rotateY(0deg); }
+          100% { transform: scale(1.5) rotateY(360deg); }
+        }
+        @keyframes checkmarkDraw {
+          0% { stroke-dashoffset: 56; }
+          100% { stroke-dashoffset: 0; }
+        }
+        @keyframes fadeInUp {
+          0% { opacity: 0; transform: translateY(24px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOutDown {
+          0% { opacity: 1; transform: translateY(0) scale(1.5); }
+          100% { opacity: 0; transform: translateY(30px) scale(0.8); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,0.3), 0 0 40px rgba(34,197,94,0.15); }
+          50% { box-shadow: 0 0 35px rgba(34,197,94,0.6), 0 0 70px rgba(34,197,94,0.3); }
+        }
+        @keyframes checkCircleGrow {
+          0% { transform: scale(0); opacity: 0; }
+          60% { transform: scale(1.15); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes overlayFadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+      `}</style>
+
       {/* Dynamic Submit success screen overlay */}
       <div className={`submission-overlay ${submissionPhase !== 'idle' ? 'active' : ''}`}>
         <div className="overlay-content">
-          
+
           {submissionPhase === 'loading' && (
             <>
               <div className="spinner"></div>
@@ -367,30 +400,125 @@ export default function LandingForm({ apiBaseUrl }) {
             </>
           )}
 
-          {submissionPhase === 'flip' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-              <div style={{ width: '120px', height: '120px' }}>
-                <img 
-                  src={logo} 
-                  className="animating-logo logo-flip-3d" 
-                  alt="MRV Logo" 
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} 
+          {submissionPhase === 'success' && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: 'rgba(10, 8, 6, 0.95)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              animation: 'overlayFadeIn 0.4s ease-out',
+              gap: '0',
+            }}>
+              {/* Logo container with zoom + flip + fadeout */}
+              <div style={{
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'radial-gradient(circle, rgba(191,163,107,0.12) 0%, transparent 70%)',
+                animation: 'logoZoomIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards, logoFlip3D 1s ease-in-out 0.8s forwards, fadeOutDown 0.5s ease-in 1.8s forwards',
+                perspective: '800px',
+              }}>
+                <img
+                  src={logo}
+                  alt="MRV Logo"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    borderRadius: '50%',
+                  }}
                 />
               </div>
-              <h3 style={{ fontFamily: 'var(--font-primary)', letterSpacing: '0.1em' }} className="text-gold">Processing Requirements</h3>
-            </div>
-          )}
 
-          {submissionPhase === 'success' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', animation: 'fadeIn 0.5s ease' }}>
-              <div className="success-badge">
-                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: 'auto' }}>
-                  <polyline points="20 6 9 17 4 12" className="success-checkmark-svg" />
-                </svg>
+              {/* Checkmark container - appears after logo fades */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                animation: 'checkCircleGrow 0.6s cubic-bezier(0.34,1.56,0.64,1) 2.3s both',
+              }}>
+                <div style={{
+                  width: '110px',
+                  height: '110px',
+                  borderRadius: '50%',
+                  border: '3px solid rgba(34,197,94,0.7)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'glowPulse 2s ease-in-out 2.9s infinite',
+                  background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)',
+                }}>
+                  <svg width="54" height="54" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
+                    <circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.3)" strokeWidth="1.5" fill="none" />
+                    <polyline
+                      points="7 13 10 16 17 9"
+                      stroke="#22c55e"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                      style={{
+                        strokeDasharray: 56,
+                        strokeDashoffset: 56,
+                        animation: 'checkmarkDraw 0.6s ease-out 2.9s forwards',
+                      }}
+                    />
+                  </svg>
+                </div>
               </div>
-              <div className="glowing-text">Submission Successful</div>
-              <p className="success-message" style={{ margin: 0, fontWeight: 500 }}>Thank you for submitting your details.</p>
-              <p className="success-sub" style={{ margin: 0 }}>Our team will contact you soon.</p>
+
+              {/* Text content - appears after checkmark */}
+              <div style={{
+                position: 'absolute',
+                top: 'calc(50% + 90px)',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.6rem',
+                width: '100%',
+                padding: '0 1rem',
+              }}>
+                <div style={{
+                  color: 'var(--color-gold, #bfa36b)',
+                  fontSize: '2rem',
+                  fontFamily: 'var(--font-logo, serif)',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textAlign: 'center',
+                  opacity: 0,
+                  animation: 'fadeInUp 0.7s ease-out 3.3s forwards',
+                }}>Submission Successful</div>
+                <div style={{
+                  color: '#ffffff',
+                  fontSize: '1.1rem',
+                  fontWeight: 500,
+                  textAlign: 'center',
+                  opacity: 0,
+                  animation: 'fadeInUp 0.7s ease-out 3.6s forwards',
+                }}>Thank you for choosing Mahesh Realty Verse.</div>
+                <div style={{
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: '0.95rem',
+                  fontWeight: 400,
+                  textAlign: 'center',
+                  opacity: 0,
+                  animation: 'fadeInUp 0.7s ease-out 3.9s forwards',
+                }}>Our team will contact you shortly.</div>
+              </div>
             </div>
           )}
 

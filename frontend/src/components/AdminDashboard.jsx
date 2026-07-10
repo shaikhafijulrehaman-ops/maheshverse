@@ -2105,204 +2105,271 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
 
       {/* LEAD DETAIL DIALOG / TIMELINE MODAL */}
       {selectedLead && (
-        <div className="modal-overlay" onClick={() => setSelectedLead(null)}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Modal Top info bar */}
-            <div className="modal-header">
-              <div>
-                <span className="badge badge-new" style={{ marginRight: '10px' }}>
-                  ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}
-                </span>
-                <span className={`badge badge-${selectedLead.status}`}>
-                  {selectedLead.status.toUpperCase()}
-                </span>
-                <h2 style={{ fontSize: '1.5rem', marginTop: '0.5rem', textAlign: 'left' }}>
-                  Client: {selectedLead.personalInfo.name}
-                </h2>
-              </div>
-              <button className="modal-close" onClick={() => setSelectedLead(null)}>✕</button>
-            </div>
+        <div className="modal-overlay" onClick={() => setSelectedLead(null)} style={{ animation: 'fadeIn 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ height: '90vh', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-            {/* Modal Main body data */}
-            <div className="modal-body">
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', textAlign: 'left' }}>
-                
-                {/* Contact and Quick actions bar */}
-                <div>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
-                    Contact Information
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.8rem' }}>
-                    <div>Phone: <strong>{selectedLead.personalInfo.phone}</strong></div>
-                    <div>Email: <strong>{selectedLead.personalInfo.email || 'None Provided'}</strong></div>
-                    <div>Date Received: <strong>{new Date(selectedLead.createdAt).toLocaleString()}</strong></div>
-                  </div>
-
-                  {/* QUICK CRM CALL TO ACTIONS */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', marginTop: '1.25rem' }}>
-                    <a href={`tel:${selectedLead.personalInfo.phone}`} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
-                      Call Client
-                    </a>
-                    
-                    <a 
-                      href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="btn btn-secondary" 
-                      style={{ textDecoration: 'none', padding: '0.5rem 1rem', fontSize: '0.8rem', borderColor: '#25D366', color: '#25D366' }}
+            {/* STICKY HEADER */}
+            <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-black-bg)', borderBottom: '1px solid var(--color-border)', padding: '1rem 1.5rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <h2 style={{ fontSize: '1.4rem', margin: 0, textAlign: 'left' }}>{selectedLead.personalInfo.name}</h2>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className="badge badge-new" style={{ fontSize: '0.7rem' }}>ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}</span>
+                    <span className={`badge badge-${selectedLead.status}`} style={{ fontSize: '0.7rem' }}>{selectedLead.status.toUpperCase()}</span>
+                    <span className="badge" style={{ fontSize: '0.7rem', background: selectedLead.type === 'buy' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: selectedLead.type === 'buy' ? '#60a5fa' : '#34d399', border: `1px solid ${selectedLead.type === 'buy' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
+                      {selectedLead.type.toUpperCase()}
+                    </span>
+                    <select
+                      value={selectedLead.status}
+                      onChange={(e) => handleUpdateStatus(selectedLead._id || selectedLead.id, e.target.value)}
+                      className="form-control"
+                      style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.25rem' }}
                     >
-                      WhatsApp
-                    </a>
-
-                    {selectedLead.personalInfo.email && (
-                      <a href={`mailto:${selectedLead.personalInfo.email}?subject=Mahesh%20Realty%20Verse%20-%20Property%20Requirement%20Follow-up`} className="btn btn-secondary" style={{ textDecoration: 'none', padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
-                        Email
-                      </a>
-                    )}
-
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={handleCopyLeadDetails}>
-                      Copy Details
-                    </button>
-
-                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={handlePrintLead}>
-                      Print
-                    </button>
-
-                    <button className="btn btn-danger" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', marginLeft: 'auto' }} onClick={() => handleDeleteLead(selectedLead._id || selectedLead.id)}>
-                      Delete Lead
-                    </button>
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="qualified">Qualified</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                    </select>
                   </div>
                 </div>
+                <button className="modal-close" onClick={() => setSelectedLead(null)} style={{ flexShrink: 0 }}>✕</button>
+              </div>
+            </div>
 
-                <hr style={{ border: 'none', borderBottom: '1px solid rgba(197, 168, 128, 0.15)' }} />
+            {/* SCROLLABLE CONTENT AREA */}
+            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                {/* REQUIREMENT SPECIFIC DATA */}
-                <div>
-                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
-                    Requirement Specifications ({selectedLead.type.toUpperCase()})
+              {/* Personal Details Card */}
+              <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                  Personal Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Full Name</span>
+                    <strong>{selectedLead.personalInfo.name}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Phone</span>
+                    <strong>{selectedLead.personalInfo.phone}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Email</span>
+                    <strong>{selectedLead.personalInfo.email || 'Not Provided'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Date Received</span>
+                    <strong>{new Date(selectedLead.createdAt).toLocaleString()}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Property Details Card — BUY */}
+              {selectedLead.type === 'buy' && selectedLead.buyDetails && (
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                    Property Details (Buy)
                   </h4>
-
-                  {selectedLead.type === 'buy' && selectedLead.buyDetails && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--border-radius-sm)' }}>
-                      <div>Preferred Location: <strong>{selectedLead.buyDetails.preferredLocation}</strong></div>
-                      <div>Property Type: <strong>{selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}</strong></div>
-                      <div>BHK Requirement: <strong>{selectedLead.buyDetails.bhk}</strong></div>
-                      <div>Min Budget: <strong>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong></div>
-                      <div>Max Budget: <strong>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong></div>
-                      <div>Loan Required: <strong>{selectedLead.buyDetails.loanRequired}</strong></div>
-                      <div>Readiness: <strong>{selectedLead.buyDetails.readyToMove}</strong></div>
-                      <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                        Additional Notes: <p style={{ color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>{selectedLead.buyDetails.additionalRequirements || 'None specified'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedLead.type === 'sell' && selectedLead.sellDetails && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                     <div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--border-radius-sm)', marginBottom: '1rem' }}>
-                        <div>Location: <strong>{selectedLead.sellDetails.location}</strong></div>
-                        <div>Property Type: <strong>{selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}</strong></div>
-                        <div>Construction Type: <strong>{selectedLead.sellDetails.constructionType || 'N/A'}</strong></div>
-                        <div>Size: <strong>{selectedLead.sellDetails.size || 'N/A'}</strong></div>
-                        <div>Facing: <strong>{selectedLead.sellDetails.facing || 'N/A'}</strong></div>
-                        <div>Property Age: <strong>{selectedLead.sellDetails.age || 'N/A'}</strong></div>
-                        <div>Expected Selling Price: <strong>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong></div>
-                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                          Additional Details: <p style={{ color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>{selectedLead.sellDetails.additionalInformation || 'None specified'}</p>
-                        </div>
-                      </div>
-
-                      {/* Display Property Images */}
-                      {selectedLead.sellDetails.images && selectedLead.sellDetails.images.length > 0 && (
-                        <div>
-                          <h5 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Property Gallery ({selectedLead.sellDetails.images.length})</h5>
-                          <div style={{ display: 'flex', gap: '0.8rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                            {selectedLead.sellDetails.images.map((imgUrl, index) => (
-                              <a key={index} href={`${apiBaseUrl}${imgUrl}`} target="_blank" rel="noopener noreferrer">
-                                <img 
-                                  src={`${apiBaseUrl}${imgUrl}`} 
-                                  alt={`Property ${index + 1}`} 
-                                  style={{ height: '110px', width: '150px', objectFit: 'cover', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--color-border)' }}
-                                />
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Preferred Location</span>
+                      <strong>{selectedLead.buyDetails.preferredLocation}</strong>
                     </div>
-                  )}
-                </div>
-
-                <hr style={{ border: 'none', borderBottom: '1px solid rgba(197, 168, 128, 0.15)' }} />
-
-                {/* FOLLOW UP MANAGER */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-                  
-                  {/* Schedule form */}
-                  <div>
-                    <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
-                      Schedule Follow-up & Action Note
-                    </h4>
-                    
-                    <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Next Action / Followup Date</label>
-                        <input 
-                          type="datetime-local" 
-                          className="form-control"
-                          value={newFollowupDate}
-                          onChange={(e) => setNewFollowupDate(e.target.value)}
-                          required
-                        />
-                      </div>
-
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Reminder Note / Progress Description</label>
-                        <input 
-                          type="text"
-                          className="form-control"
-                          placeholder="E.g. Client requested a site visit. Scheduled for Saturday 11am."
-                          value={newFollowupNotes}
-                          onChange={(e) => setNewFollowupNotes(e.target.value)}
-                        />
-                      </div>
-
-                      <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', alignSelf: 'flex-start' }}>
-                        Schedule Note
-                      </button>
-                    </form>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
+                      <strong>{selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>BHK Requirement</span>
+                      <strong>{selectedLead.buyDetails.bhk}</strong>
+                    </div>
                   </div>
-
-                  {/* Followup Timeline History */}
-                  <div>
-                    <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-                      Follow-up History Logs ({followups.length})
-                    </h4>
-                    
-                    {followups.length > 0 ? (
-                      <div className="timeline">
-                        {followups.map(item => (
-                          <div key={item._id || item.id} className="timeline-item">
-                            <div className="timeline-dot"></div>
-                            <div className="timeline-content">
-                              <div className="timeline-date">{new Date(item.date).toLocaleString()}</div>
-                              <div className="timeline-notes">{item.notes}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>No followup actions logged yet.</p>
-                    )}
-                  </div>
-
                 </div>
+              )}
 
+              {/* Property Details Card — SELL */}
+              {selectedLead.type === 'sell' && selectedLead.sellDetails && (
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                    Property Details (Sell)
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Location</span>
+                      <strong>{selectedLead.sellDetails.location}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
+                      <strong>{selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Construction Type</span>
+                      <strong>{selectedLead.sellDetails.constructionType || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Size</span>
+                      <strong>{selectedLead.sellDetails.size || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Facing</span>
+                      <strong>{selectedLead.sellDetails.facing || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Age</span>
+                      <strong>{selectedLead.sellDetails.age || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Expected Selling Price</span>
+                      <strong>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Budget & Requirements Card — BUY */}
+              {selectedLead.type === 'buy' && selectedLead.buyDetails && (
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                    Budget & Requirements
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Min Budget</span>
+                      <strong>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Max Budget</span>
+                      <strong>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Loan Required</span>
+                      <strong>{selectedLead.buyDetails.loanRequired}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Readiness</span>
+                      <strong>{selectedLead.buyDetails.readyToMove}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Notes Card */}
+              {((selectedLead.type === 'buy' && selectedLead.buyDetails) || (selectedLead.type === 'sell' && selectedLead.sellDetails)) && (
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                    Additional Notes
+                  </h4>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>
+                    {selectedLead.type === 'buy'
+                      ? (selectedLead.buyDetails.additionalRequirements || 'None specified')
+                      : (selectedLead.sellDetails.additionalInformation || 'None specified')}
+                  </p>
+                </div>
+              )}
+
+              {/* Uploaded Images Card — SELL */}
+              {selectedLead.type === 'sell' && selectedLead.sellDetails?.images && selectedLead.sellDetails.images.length > 0 && (
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                    Uploaded Images ({selectedLead.sellDetails.images.length})
+                  </h4>
+                  <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                    {selectedLead.sellDetails.images.map((imgUrl, index) => (
+                      <a key={index} href={`${apiBaseUrl}${imgUrl}`} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                        <img
+                          src={`${apiBaseUrl}${imgUrl}`}
+                          alt={`Property ${index + 1}`}
+                          style={{ height: '100px', width: '140px', objectFit: 'cover', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--color-border)', transition: 'transform 0.2s' }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Follow-up History Card */}
+              <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                  Follow-up History ({followups.length})
+                </h4>
+
+                {followups.length > 0 ? (
+                  <div className="timeline" style={{ marginBottom: '1.5rem' }}>
+                    {followups.map(item => (
+                      <div key={item._id || item.id} className="timeline-item">
+                        <div className="timeline-dot"></div>
+                        <div className="timeline-content">
+                          <div className="timeline-date">{new Date(item.date).toLocaleString()}</div>
+                          <div className="timeline-notes">{item.notes}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>No follow-up actions logged yet.</p>
+                )}
+
+                <h5 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.75rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
+                  Schedule New Follow-up
+                </h5>
+                <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Next Action / Follow-up Date</label>
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={newFollowupDate}
+                      onChange={(e) => setNewFollowupDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Reminder Note / Progress Description</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="E.g. Client requested a site visit. Scheduled for Saturday 11am."
+                      value={newFollowupNotes}
+                      onChange={(e) => setNewFollowupNotes(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem', alignSelf: 'flex-start' }}>
+                    Schedule Note
+                  </button>
+                </form>
               </div>
 
             </div>
+
+            {/* STICKY FOOTER ACTIONS */}
+            <div style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--color-black-bg)', borderTop: '1px solid var(--color-border)', padding: '0.75rem 1.5rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
+                <a href={`tel:${selectedLead.personalInfo.phone}`} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.45rem 1rem', fontSize: '0.8rem' }}>
+                  Call
+                </a>
+                <a
+                  href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{ textDecoration: 'none', padding: '0.45rem 1rem', fontSize: '0.8rem', borderColor: '#25D366', color: '#25D366' }}
+                >
+                  WhatsApp
+                </a>
+                <button className="btn btn-secondary" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }} onClick={handleCopyLeadDetails}>
+                  Copy Details
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }} onClick={handlePrintLead}>
+                  Print
+                </button>
+                <button className="btn btn-danger" style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', marginLeft: 'auto' }} onClick={() => handleDeleteLead(selectedLead._id || selectedLead.id)}>
+                  Delete
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
