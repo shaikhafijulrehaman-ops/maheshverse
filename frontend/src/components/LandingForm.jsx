@@ -44,6 +44,7 @@ export default function LandingForm({ apiBaseUrl }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionPhase, setSubmissionPhase] = useState('idle'); // 'idle' | 'loading' | 'flip' | 'success'
+  const [showSuccessCheck, setShowSuccessCheck] = useState(false);
   const [serverErrorMsg, setServerErrorMsg] = useState('');
   const [supabaseConnected, setSupabaseConnected] = useState(true);
 
@@ -435,8 +436,14 @@ export default function LandingForm({ apiBaseUrl }) {
       // Success Phase Flow
       setTimeout(() => {
         setSubmissionPhase('success');
+        setShowSuccessCheck(false);
         // Push state to browser history to catch browser Back button
         window.history.pushState({ phase: 'success' }, '');
+
+        // Transition from flipping logo to checkmark after 2.2 seconds
+        setTimeout(() => {
+          setShowSuccessCheck(true);
+        }, 2200);
       }, 1000);
 
     } catch (err) {
@@ -480,6 +487,7 @@ export default function LandingForm({ apiBaseUrl }) {
     setErrors({});
     setIsSubmitting(false);
     setSubmissionPhase('idle');
+    setShowSuccessCheck(false);
   };
 
   // Filter locations for searchable dropdown
@@ -560,118 +568,146 @@ export default function LandingForm({ apiBaseUrl }) {
               padding: '2rem',
               boxSizing: 'border-box'
             }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                width: '100%',
-                maxWidth: '480px',
-                gap: '1.5rem',
-              }}>
-                {/* Checkmark circle - perfectly centered inside this flex column */}
+              {!showSuccessCheck ? (
+                /* Logo container with zoom + flip + fadeout */
                 <div style={{
-                  animation: 'checkCircleGrow 0.6s cubic-bezier(0.34,1.56,0.64,1) both',
+                  width: '130px',
+                  height: '130px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  background: 'radial-gradient(circle, rgba(191,163,107,0.12) 0%, transparent 70%)',
+                  animation: 'logoZoomIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards, logoFlip3D 1s ease-in-out 0.8s forwards, fadeOutDown 0.5s ease-in 1.8s forwards',
+                  perspective: '800px',
                 }}>
-                  <div style={{
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '50%',
-                    border: '3px solid rgba(34,197,94,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    animation: 'glowPulse 2s ease-in-out infinite',
-                    background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)',
-                  }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
-                      <circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.3)" strokeWidth="1.5" fill="none" />
-                      <polyline
-                        points="7 13 10 16 17 9"
-                        stroke="#22c55e"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                        style={{
-                          strokeDasharray: 56,
-                          strokeDashoffset: 56,
-                          animation: 'checkmarkDraw 0.6s ease-out 0.3s forwards',
-                        }}
-                      />
-                    </svg>
-                  </div>
+                  <img
+                    src={logo}
+                    alt="MRV Logo"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      borderRadius: '50%',
+                    }}
+                  />
                 </div>
-
-                {/* Text contents */}
+              ) : (
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '0.6rem',
-                  marginTop: '0.5rem'
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: '480px',
+                  gap: '1.5rem',
+                  animation: 'overlayFadeIn 0.4s ease-out'
                 }}>
+                  {/* Checkmark circle - perfectly centered inside this flex column */}
                   <div style={{
-                    color: 'var(--color-gold, #bfa36b)',
-                    fontSize: '2rem',
-                    fontFamily: 'var(--font-logo, serif)',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    opacity: 0,
-                    animation: 'fadeInUp 0.7s ease-out 0.5s forwards',
-                  }}>Submission Successful</div>
-                  
-                  <div style={{
-                    color: '#ffffff',
-                    fontSize: '1.1rem',
-                    fontWeight: 500,
-                    opacity: 0,
-                    animation: 'fadeInUp 0.7s ease-out 0.7s forwards',
-                  }}>Thank you for choosing Mahesh Realty Verse.</div>
-                  
-                  <div style={{
-                    color: 'rgba(255,255,255,0.5)',
-                    fontSize: '0.95rem',
-                    fontWeight: 400,
-                    opacity: 0,
-                    animation: 'fadeInUp 0.7s ease-out 0.9s forwards',
-                  }}>Our team will contact you shortly.</div>
-                </div>
+                    animation: 'checkCircleGrow 0.6s cubic-bezier(0.34,1.56,0.64,1) both',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <div style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '50%',
+                      border: '3px solid rgba(34,197,94,0.7)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'glowPulse 2s ease-in-out infinite',
+                      background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)',
+                    }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
+                        <circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.3)" strokeWidth="1.5" fill="none" />
+                        <polyline
+                          points="7 13 10 16 17 9"
+                          stroke="#22c55e"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          fill="none"
+                          style={{
+                            strokeDasharray: 56,
+                            strokeDashoffset: 56,
+                            animation: 'checkmarkDraw 0.6s ease-out 0.3s forwards',
+                          }}
+                        />
+                      </svg>
+                    </div>
+                  </div>
 
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{
-                    width: 'auto',
-                    padding: '0.6rem 2rem',
-                    fontSize: '0.9rem',
-                    borderColor: 'var(--color-gold)',
-                    color: 'var(--color-gold)',
-                    marginTop: '1.5rem',
-                    opacity: 0,
-                    animation: 'fadeInUp 0.7s ease-out 1.1s forwards',
-                    borderRadius: 'var(--border-radius-sm)',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={handleBackToHome}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--color-gold)';
-                    e.currentTarget.style.color = '#000';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--color-gold)';
-                  }}
-                >
-                  Back to Home
-                </button>
-              </div>
+                  {/* Text contents */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    marginTop: '0.5rem'
+                  }}>
+                    <div style={{
+                      color: 'var(--color-gold, #bfa36b)',
+                      fontSize: '2rem',
+                      fontFamily: 'var(--font-logo, serif)',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      opacity: 0,
+                      animation: 'fadeInUp 0.7s ease-out 0.5s forwards',
+                    }}>Submission Successful</div>
+                    
+                    <div style={{
+                      color: '#ffffff',
+                      fontSize: '1.1rem',
+                      fontWeight: 500,
+                      opacity: 0,
+                      animation: 'fadeInUp 0.7s ease-out 0.7s forwards',
+                    }}>Thank you for choosing Mahesh Realty Verse.</div>
+                    
+                    <div style={{
+                      color: 'rgba(255,255,255,0.5)',
+                      fontSize: '0.95rem',
+                      fontWeight: 400,
+                      opacity: 0,
+                      animation: 'fadeInUp 0.7s ease-out 0.9s forwards',
+                    }}>Our team will contact you shortly.</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{
+                      width: 'auto',
+                      padding: '0.6rem 2rem',
+                      fontSize: '0.9rem',
+                      borderColor: 'var(--color-gold)',
+                      color: 'var(--color-gold)',
+                      marginTop: '1.5rem',
+                      opacity: 0,
+                      animation: 'fadeInUp 0.7s ease-out 1.1s forwards',
+                      borderRadius: 'var(--border-radius-sm)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={handleBackToHome}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--color-gold)';
+                      e.currentTarget.style.color = '#000';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--color-gold)';
+                    }}
+                  >
+                    Back to Home
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
