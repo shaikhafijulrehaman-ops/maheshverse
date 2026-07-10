@@ -38,7 +38,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel, apiBaseUrl }) {
           throw new Error(error.message || 'Invalid email or password.');
         }
 
-        setSuccessMsg('Authentication successful. Directing to CRM...');
+        setSuccessMsg('Authentication successful. Directing to Control Panel...');
         
         setTimeout(() => {
           onLoginSuccess(data.session.access_token, data.user);
@@ -56,7 +56,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel, apiBaseUrl }) {
           throw new Error(data.message || 'Login failed. Invalid credentials.');
         }
 
-        setSuccessMsg('Authentication successful. Directing to CRM...');
+        setSuccessMsg('Authentication successful. Directing to Control Panel...');
         
         setTimeout(() => {
           onLoginSuccess(data.token, data.user);
@@ -157,7 +157,7 @@ export default function AdminLogin({ onLoginSuccess, onCancel, apiBaseUrl }) {
           <div style={{ width: '90px', height: '90px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--color-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img src={logo} className="mrv-logo" style={{ width: '100%', height: '100%', objectFit: 'contain', animation: 'none' }} alt="MRV Logo" />
           </div>
-          <h2 className="text-gold" style={{ fontSize: '1.6rem', fontFamily: 'var(--font-logo)', margin: 0 }}>MRV CRM Access</h2>
+          <h2 className="text-gold" style={{ fontSize: '1.6rem', fontFamily: 'var(--font-logo)', margin: 0 }}>MRV Admin Access</h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: 0 }}>
             Authorized Personnel Gateway
           </p>

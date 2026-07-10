@@ -422,4 +422,19 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/leads/upload-images
+// @desc    Upload images and return local URLs
+// @access  Public
+router.post('/upload-images', (req, res) => {
+  upload.array('images', 10)(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ message: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ message: err.message });
+    }
+    const imageUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+    res.json({ urls: imageUrls });
+  });
+});
+
 module.exports = router;

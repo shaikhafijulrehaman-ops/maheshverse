@@ -45,14 +45,44 @@ export default function LandingForm({ apiBaseUrl }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionPhase, setSubmissionPhase] = useState('idle'); // 'idle' | 'loading' | 'flip' | 'success'
   const [serverErrorMsg, setServerErrorMsg] = useState('');
+  const [supabaseConnected, setSupabaseConnected] = useState(true);
 
   const dropdownRefBuy = useRef(null);
   const dropdownRefSell = useRef(null);
 
-  // Fetch Locations & Properties from Admin dynamically
+  // Fetch Locations & Properties and check Supabase connection dynamically
   useEffect(() => {
     fetchLocationsAndProperties();
+    checkSupabaseConnection();
   }, []);
+
+  const checkSupabaseConnection = async () => {
+    if (supabaseClient.isEnabled) {
+      const connected = await supabaseClient.isSupabaseConnected();
+      setSupabaseConnected(connected);
+    } else {
+      setSupabaseConnected(false);
+    }
+  };
+
+  // Intercept browser back button on success screen overlay
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (submissionPhase === 'success') {
+        resetForm();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [submissionPhase]);
+
+  const handleBackToHome = () => {
+    if (window.history.state && window.history.state.phase === 'success') {
+      window.history.back(); // Pops state and triggers popstate listener
+    } else {
+      resetForm();
+    }
+  };
 
   const fetchLocationsAndProperties = async () => {
     try {
@@ -90,8 +120,66 @@ export default function LandingForm({ apiBaseUrl }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // Compression helper
+  const compressImageFile = (file) => {
+    return new Promise((resolve) => {
+      if (!file || !file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const maxWidth = 1200;
+          const maxHeight = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const compressed = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressed);
+            },
+            'image/jpeg',
+            0.75
+          );
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   // Handle Image uploads and previews
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     
     // Enforce max 10 images limit
@@ -105,11 +193,16 @@ export default function LandingForm({ apiBaseUrl }) {
       alert('Only image files are allowed.');
     }
 
-    const newImages = [...sellImages, ...validFiles];
+    // Compress in background
+    const compressedFiles = await Promise.all(
+      validFiles.map(file => compressImageFile(file))
+    );
+
+    const newImages = [...sellImages, ...compressedFiles];
     setSellImages(newImages);
 
     // Generate previews
-    const newPreviews = validFiles.map(file => ({
+    const newPreviews = compressedFiles.map(file => ({
       id: Math.random().toString(36).substring(2, 9),
       file: file,
       url: URL.createObjectURL(file)
@@ -118,12 +211,18 @@ export default function LandingForm({ apiBaseUrl }) {
   };
 
   const removeImage = (idToRemove) => {
-    const previewToRemove = sellPreviews.find(p => p.id === idToRemove);
-    if (previewToRemove) {
-      URL.revokeObjectURL(previewToRemove.url);
-    }
-    setSellPreviews(sellPreviews.filter(p => p.id !== idToRemove));
-    setSellImages(sellImages.filter((_, idx) => sellPreviews[idx].id !== idToRemove));
+    const index = sellPreviews.findIndex(p => p.id === idToRemove);
+    if (index === -1) return;
+
+    URL.revokeObjectURL(sellPreviews[index].url);
+
+    const newPreviews = [...sellPreviews];
+    newPreviews.splice(index, 1);
+    setSellPreviews(newPreviews);
+
+    const newImages = [...sellImages];
+    newImages.splice(index, 1);
+    setSellImages(newImages);
   };
 
   // Cleanup object URLs on unmount
@@ -131,7 +230,7 @@ export default function LandingForm({ apiBaseUrl }) {
     return () => {
       sellPreviews.forEach(p => URL.revokeObjectURL(p.url));
     };
-  }, []);
+  }, [sellPreviews]);
 
   // Form Validation
   const validateForm = () => {
@@ -184,6 +283,7 @@ export default function LandingForm({ apiBaseUrl }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (isSubmitting || submissionPhase === 'success') return; // Prevent duplicate submissions
 
     setIsSubmitting(true);
     setServerErrorMsg('');
@@ -223,62 +323,103 @@ export default function LandingForm({ apiBaseUrl }) {
     }
 
     try {
-      if (supabaseClient.isEnabled) {
-        // 1. Verify 2-hour deduplication
-        const isDuplicate = await supabaseClient.checkDuplicateLead(phone, leadType);
-        if (isDuplicate) {
-          throw new Error('A request from this mobile number is already in progress. Our team will contact you within 24 hours.');
-        }
+      let leadSubmitted = false;
+      let uploadedImages = [];
 
-        // 2. Upload images if "sell"
-        let uploadedImages = [];
-        if (leadType === 'sell' && sellImages.length > 0) {
-          for (const file of sellImages) {
-            const url = await supabaseClient.uploadImage(file);
-            uploadedImages.push(url);
+      if (supabaseClient.isEnabled) {
+        try {
+          // 1. Verify 2-hour deduplication
+          const isDuplicate = await supabaseClient.checkDuplicateLead(phone, leadType);
+          if (isDuplicate) {
+            throw new Error('A request from this mobile number is already in progress. Our team will contact you within 24 hours.');
+          }
+
+          // 2. Upload images if "sell"
+          if (leadType === 'sell' && sellImages.length > 0) {
+            for (const file of sellImages) {
+              try {
+                const url = await supabaseClient.uploadImage(file);
+                uploadedImages.push(url);
+              } catch (uploadErr) {
+                console.warn("Supabase image upload failed, falling back to local backend upload:", uploadErr);
+                const localFormData = new FormData();
+                sellImages.forEach(img => {
+                  localFormData.append('images', img);
+                });
+                try {
+                  const uploadRes = await fetch(`${apiBaseUrl}/api/leads/upload-images`, {
+                    method: 'POST',
+                    body: localFormData
+                  });
+                  if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    uploadedImages = uploadData.urls;
+                  } else {
+                    console.error("Local image upload fallback failed");
+                  }
+                } catch (localErr) {
+                  console.error("Local image upload connection failed:", localErr);
+                }
+                break;
+              }
+            }
+          }
+
+          // 3. Construct Lead Payload
+          const leadPayload = {
+            type: leadType,
+            status: 'new',
+            personalInfo: { name, phone, email },
+            buyDetails: leadType === 'buy' ? {
+              preferredLocation: buyLocation,
+              propertyType: buyPropertyType,
+              otherPropertyType: buyOtherPropertyType,
+              bhk: buyBhk,
+              minBudget: buyMinBudget,
+              maxBudget: buyMaxBudget,
+              loanRequired: buyLoan,
+              readyToMove: buyReady,
+              additionalRequirements: buyRequirements
+            } : null,
+            sellDetails: leadType === 'sell' ? {
+              location: sellLocation,
+              propertyType: sellPropertyType,
+              otherPropertyType: sellOtherPropertyType,
+              constructionType: sellConstructionType,
+              size: sellSize,
+              facing: sellFacing,
+              age: sellAge,
+              expectedPrice: sellExpectedPrice,
+              images: uploadedImages,
+              additionalInformation: sellAdditionalInfo
+            } : null
+          };
+
+          // 4. Submit Lead
+          await supabaseClient.createLead(leadPayload);
+          
+          // 5. Create notification
+          try {
+            await supabaseClient.createNotification(
+              `New ${leadType.toUpperCase()} lead: ${name} (${phone}) - ${leadType === 'buy' ? buyLocation : sellLocation}`,
+              'info'
+            );
+          } catch (nErr) {
+            console.warn("Silent notification creation fail:", nErr);
+          }
+
+          leadSubmitted = true;
+        } catch (supabaseError) {
+          console.warn("Supabase submission failed, silently falling back to local backend:", supabaseError);
+          // If it's a deduplication check error, rethrow it to show the user-friendly message
+          if (supabaseError.message && supabaseError.message.includes('already in progress')) {
+            throw supabaseError;
           }
         }
+      }
 
-        // 3. Construct Lead Payload
-        const leadPayload = {
-          type: leadType,
-          status: 'new',
-          personalInfo: { name, phone, email },
-          buyDetails: leadType === 'buy' ? {
-            preferredLocation: buyLocation,
-            propertyType: buyPropertyType,
-            otherPropertyType: buyOtherPropertyType,
-            bhk: buyBhk,
-            minBudget: buyMinBudget,
-            maxBudget: buyMaxBudget,
-            loanRequired: buyLoan,
-            readyToMove: buyReady,
-            additionalRequirements: buyRequirements
-          } : null,
-          sellDetails: leadType === 'sell' ? {
-            location: sellLocation,
-            propertyType: sellPropertyType,
-            otherPropertyType: sellOtherPropertyType,
-            constructionType: sellConstructionType,
-            size: sellSize,
-            facing: sellFacing,
-            age: sellAge,
-            expectedPrice: sellExpectedPrice,
-            images: uploadedImages,
-            additionalInformation: sellAdditionalInfo
-          } : null
-        };
-
-        // 4. Submit Lead
-        await supabaseClient.createLead(leadPayload);
-        
-        // 5. Create notification
-        await supabaseClient.createNotification(
-          `New ${leadType.toUpperCase()} lead: ${name} (${phone}) - ${leadType === 'buy' ? buyLocation : sellLocation}`,
-          'info'
-        );
-
-      } else {
+      // Fallback submission if Supabase failed or is not enabled
+      if (!leadSubmitted) {
         const response = await fetch(`${apiBaseUrl}/api/leads`, {
           method: 'POST',
           body: formData
@@ -294,16 +435,18 @@ export default function LandingForm({ apiBaseUrl }) {
       // Success Phase Flow
       setTimeout(() => {
         setSubmissionPhase('success');
-
-        // Auto redirect/reset after 4 seconds
-        setTimeout(() => {
-          resetForm();
-        }, 4000);
+        // Push state to browser history to catch browser Back button
+        window.history.pushState({ phase: 'success' }, '');
       }, 1000);
 
     } catch (err) {
       console.error(err);
-      setServerErrorMsg(err.message || 'An error occurred during submission.');
+      // Map technical errors to user-friendly messages
+      let friendlyMessage = 'An error occurred while saving your request. Please try again.';
+      if (err.message && err.message.includes('already in progress')) {
+        friendlyMessage = err.message;
+      }
+      setServerErrorMsg(friendlyMessage);
       setSubmissionPhase('idle');
       setIsSubmitting(false);
     }
@@ -414,110 +557,120 @@ export default function LandingForm({ apiBaseUrl }) {
               justifyContent: 'center',
               zIndex: 9999,
               animation: 'overlayFadeIn 0.4s ease-out',
-              gap: '0',
+              padding: '2rem',
+              boxSizing: 'border-box'
             }}>
-              {/* Logo container with zoom + flip + fadeout */}
               <div style={{
-                width: '130px',
-                height: '130px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'radial-gradient(circle, rgba(191,163,107,0.12) 0%, transparent 70%)',
-                animation: 'logoZoomIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards, logoFlip3D 1s ease-in-out 0.8s forwards, fadeOutDown 0.5s ease-in 1.8s forwards',
-                perspective: '800px',
-              }}>
-                <img
-                  src={logo}
-                  alt="MRV Logo"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    borderRadius: '50%',
-                  }}
-                />
-              </div>
-
-              {/* Checkmark container - appears after logo fades */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                animation: 'checkCircleGrow 0.6s cubic-bezier(0.34,1.56,0.64,1) 2.3s both',
-              }}>
-                <div style={{
-                  width: '110px',
-                  height: '110px',
-                  borderRadius: '50%',
-                  border: '3px solid rgba(34,197,94,0.7)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'glowPulse 2s ease-in-out 2.9s infinite',
-                  background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)',
-                }}>
-                  <svg width="54" height="54" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
-                    <circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.3)" strokeWidth="1.5" fill="none" />
-                    <polyline
-                      points="7 13 10 16 17 9"
-                      stroke="#22c55e"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      fill="none"
-                      style={{
-                        strokeDasharray: 56,
-                        strokeDashoffset: 56,
-                        animation: 'checkmarkDraw 0.6s ease-out 2.9s forwards',
-                      }}
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Text content - appears after checkmark */}
-              <div style={{
-                position: 'absolute',
-                top: 'calc(50% + 90px)',
-                left: '50%',
-                transform: 'translateX(-50%)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.6rem',
+                justifyContent: 'center',
+                textAlign: 'center',
                 width: '100%',
-                padding: '0 1rem',
+                maxWidth: '480px',
+                gap: '1.5rem',
               }}>
+                {/* Checkmark circle - perfectly centered inside this flex column */}
                 <div style={{
-                  color: 'var(--color-gold, #bfa36b)',
-                  fontSize: '2rem',
-                  fontFamily: 'var(--font-logo, serif)',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textAlign: 'center',
-                  opacity: 0,
-                  animation: 'fadeInUp 0.7s ease-out 3.3s forwards',
-                }}>Submission Successful</div>
+                  animation: 'checkCircleGrow 0.6s cubic-bezier(0.34,1.56,0.64,1) both',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    border: '3px solid rgba(34,197,94,0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: 'glowPulse 2s ease-in-out infinite',
+                    background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)',
+                  }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
+                      <circle cx="12" cy="12" r="10" stroke="rgba(34,197,94,0.3)" strokeWidth="1.5" fill="none" />
+                      <polyline
+                        points="7 13 10 16 17 9"
+                        stroke="#22c55e"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                        style={{
+                          strokeDasharray: 56,
+                          strokeDashoffset: 56,
+                          animation: 'checkmarkDraw 0.6s ease-out 0.3s forwards',
+                        }}
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Text contents */}
                 <div style={{
-                  color: '#ffffff',
-                  fontSize: '1.1rem',
-                  fontWeight: 500,
-                  textAlign: 'center',
-                  opacity: 0,
-                  animation: 'fadeInUp 0.7s ease-out 3.6s forwards',
-                }}>Thank you for choosing Mahesh Realty Verse.</div>
-                <div style={{
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.95rem',
-                  fontWeight: 400,
-                  textAlign: 'center',
-                  opacity: 0,
-                  animation: 'fadeInUp 0.7s ease-out 3.9s forwards',
-                }}>Our team will contact you shortly.</div>
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  marginTop: '0.5rem'
+                }}>
+                  <div style={{
+                    color: 'var(--color-gold, #bfa36b)',
+                    fontSize: '2rem',
+                    fontFamily: 'var(--font-logo, serif)',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    opacity: 0,
+                    animation: 'fadeInUp 0.7s ease-out 0.5s forwards',
+                  }}>Submission Successful</div>
+                  
+                  <div style={{
+                    color: '#ffffff',
+                    fontSize: '1.1rem',
+                    fontWeight: 500,
+                    opacity: 0,
+                    animation: 'fadeInUp 0.7s ease-out 0.7s forwards',
+                  }}>Thank you for choosing Mahesh Realty Verse.</div>
+                  
+                  <div style={{
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: '0.95rem',
+                    fontWeight: 400,
+                    opacity: 0,
+                    animation: 'fadeInUp 0.7s ease-out 0.9s forwards',
+                  }}>Our team will contact you shortly.</div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{
+                    width: 'auto',
+                    padding: '0.6rem 2rem',
+                    fontSize: '0.9rem',
+                    borderColor: 'var(--color-gold)',
+                    color: 'var(--color-gold)',
+                    marginTop: '1.5rem',
+                    opacity: 0,
+                    animation: 'fadeInUp 0.7s ease-out 1.1s forwards',
+                    borderRadius: 'var(--border-radius-sm)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={handleBackToHome}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-gold)';
+                    e.currentTarget.style.color = '#000';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--color-gold)';
+                  }}
+                >
+                  Back to Home
+                </button>
               </div>
             </div>
           )}
@@ -553,27 +706,12 @@ export default function LandingForm({ apiBaseUrl }) {
                 className="selector-card"
                 onClick={() => setLeadType('buy')}
               >
-                <div className="selector-card-icons-row">
-                  {/* Luxury house icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 21h18M3 10l9-7 9 7v11H3V10z"/>
-                    <path d="M9 21v-6h6v6M12 3v4"/>
-                  </svg>
-                  {/* Building icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="4" y="2" width="16" height="20" rx="1"/>
-                    <path d="M9 6h2m-2 4h2m-2 4h2m-2 4h2M13 6h2m-2 4h2m-2 4h2m-2 4h2"/>
-                  </svg>
-                  {/* Key icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="7.5" cy="15.5" r="3.5"/>
-                    <path d="M10 13l9-9m2 2l-2-2m-3 3l-1.5-1.5M17 6l-1.5-1.5"/>
-                  </svg>
-                  {/* Property search icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 11.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8l6-4.5 3 2.25"/>
-                    <circle cx="16.5" cy="7.5" r="3.5"/>
-                    <path d="M19 10l3 3"/>
+                <div className="selector-card-icon-wrapper" style={{ marginBottom: '1.25rem', color: 'var(--color-gold)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {/* Clean minimal Search Home icon */}
+                  <svg className="premium-gold-svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <circle cx="12" cy="13" r="2.5" />
+                    <path d="m14 15 2.5 2.5" />
                   </svg>
                 </div>
                 <div className="selector-card-title">Buy Property</div>
@@ -584,27 +722,12 @@ export default function LandingForm({ apiBaseUrl }) {
                 className="selector-card"
                 onClick={() => setLeadType('sell')}
               >
-                <div className="selector-card-icons-row">
-                  {/* Property listing icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
-                    <path d="M9 7h6M9 11h6M9 15h4"/>
-                  </svg>
-                  {/* Home with sale tag */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 10l9-7 9 7v11H3V10z"/>
-                    <path d="M9 14h6v7H9v-7z"/>
-                    <rect x="11" y="6" width="2" height="4" rx="0.5" transform="rotate(45 12 8)"/>
-                  </svg>
-                  {/* Commercial building icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 21h18M5 21V7l7-3 7 3v14M9 9h2m-2 4h2m-2 4h2M13 9h2m-2 4h2m-2 4h2"/>
-                  </svg>
-                  {/* Real estate selling icon */}
-                  <svg class="premium-gold-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M19 8l-3 3 3 3m2-3h-5"/>
+                <div className="selector-card-icon-wrapper" style={{ marginBottom: '1.25rem', color: 'var(--color-gold)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {/* Clean minimal Listing Document icon */}
+                  <svg className="premium-gold-svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" />
+                    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                    <path d="M10 9H8m6 4H8m2 4H8" />
                   </svg>
                 </div>
                 <div className="selector-card-title">Sell Property</div>

@@ -1396,3 +1396,55 @@ textarea.form-control {
   }
 }
 
+
+/* CRM Action buttons in header */
+.crm-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+  padding: 0.15rem 0;
+}
+.crm-actions-row::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.crm-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+}
+.crm-action-btn:hover {
+  color: var(--color-gold-bright);
+  border-color: var(--color-gold-bright);
+  background: rgba(197, 168, 128, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(197, 168, 128, 0.1);
+}
+.crm-action-btn.btn-danger-outline {
+  color: var(--color-error);
+}
+.crm-action-btn.btn-danger-outline:hover {
+  color: #f87171;
+  border-color: var(--color-error);
+  background: rgba(239, 68, 68, 0.12);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+
+/* Selector Card Icon Wrapper styling */
+.selector-card-icon-wrapper {
+  transition: transform var(--transition-normal);
+}
+.selector-card:hover .selector-card-icon-wrapper {
+  transform: scale(1.08);
+}

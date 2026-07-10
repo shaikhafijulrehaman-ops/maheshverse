@@ -8,9 +8,87 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const supabaseClient = {
   isEnabled: true, // Routed directly to Supabase production
 
+  async isSupabaseConnected() {
+    if (!SUPABASE_URL || SUPABASE_URL.includes('placeholder') || !SUPABASE_ANON_KEY) {
+      return false;
+    }
+    try {
+      // 1. Verify database connection
+      const { error: dbError } = await supabase.from('leads').select('id').limit(1);
+      if (dbError) {
+        console.warn('Supabase DB connectivity check returned error:', dbError);
+        const validCodes = ['PGRST116', '42P01'];
+        const isResponding = dbError.status === 404 || dbError.status === 406 || validCodes.includes(dbError.code);
+        if (!isResponding) {
+          return false;
+        }
+      }
+
+      // 2. Verify Storage bucket availability
+      const { error: getError } = await supabase.storage.getBucket('property-images');
+      if (getError) {
+        console.warn('Bucket check returned error:', getError);
+        
+        // Check if error status is 404 (Not Found) or message indicates missing resource
+        const isNotFound = getError.status === 404 || 
+                            (getError.message && getError.message.toLowerCase().includes('not found'));
+                            
+        if (isNotFound) {
+          // Attempt programmatical bucket creation
+          const { error: createError } = await supabase.storage.createBucket('property-images', {
+            public: true,
+            allowedMimeTypes: ['image/*']
+          });
+          if (createError) {
+            console.error('Bucket "property-images" is missing and creation failed:', createError);
+            return false; // Connection/storage not fully available
+          }
+        }
+        // If it's a 401/403 permission error, the bucket likely exists but metadata read is restricted.
+        // We do NOT return false here so uploads can still be attempted.
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('Supabase connectivity check threw error:', err);
+      return false;
+    }
+  },
+
+  async ensureBucketExists() {
+    try {
+      const bucketName = 'property-images';
+      // Attempt to check if bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      if (listError) {
+        console.warn('Could not list buckets (might lack permission):', listError);
+        return; // Fallback, let the upload attempt handle it
+      }
+      
+      const exists = buckets && buckets.some(b => b.name === bucketName);
+      if (!exists) {
+        console.log(`Bucket "${bucketName}" not found. Attempting to create it...`);
+        const { error: createError } = await supabase.storage.createBucket(bucketName, {
+          public: true,
+          allowedMimeTypes: ['image/*']
+        });
+        if (createError) {
+          console.error(`Failed to create bucket "${bucketName}":`, createError);
+        } else {
+          console.log(`Bucket "${bucketName}" created successfully.`);
+        }
+      }
+    } catch (err) {
+      console.warn('Error inside ensureBucketExists:', err);
+    }
+  },
+
   // Upload property image to Storage bucket "property-images"
   async uploadImage(file) {
     try {
+      // First ensure the bucket is ready
+      await this.ensureBucketExists();
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `sell-listings/${fileName}`;
@@ -433,7 +511,9 @@ export const supabaseClient = {
         facing: item.facing,
         age: item.age,
         expectedPrice: item.expected_price,
-        images: item.images || [],
+        images: typeof item.images === 'string' 
+          ? (item.images.startsWith('[') ? JSON.parse(item.images) : item.images.split(',').map(s => s.trim())) 
+          : (Array.isArray(item.images) ? item.images : []),
         additionalInformation: item.additional_information
       } : null
     };

@@ -5,7 +5,19 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import { supabase, supabaseClient } from './utils/supabaseClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `http://${hostname}:5050`;
+    }
+  }
+  return 'http://localhost:5050';
+};
+const API_BASE_URL = getApiBaseUrl();
 
 function AppContent() {
   const [token, setToken] = useState(localStorage.getItem('mrv_admin_token') || null);

@@ -1042,6 +1042,18 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
   };
 
   if (selectedLead) {
+    const getImageUrl = (url) => {
+      if (!url) return '';
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      return `${apiBaseUrl}${url}`;
+    };
+
+    const clientInitials = selectedLead.personalInfo.name
+      ? selectedLead.personalInfo.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+      : 'C';
+
     return (
       <div className="lead-detail-page" style={{ 
         width: '100%', 
@@ -1059,75 +1071,137 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
           zIndex: 100,
           background: 'var(--color-black-card)',
           borderBottom: '1px solid var(--color-border)',
-          padding: '1.25rem 2rem',
+          padding: '1rem 1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1rem'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', width: '100%' }}>
             <button 
               className="btn btn-secondary" 
-              style={{ width: 'auto', padding: '0.5rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }} 
+              style={{ width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-sm)' }} 
               onClick={() => { setSelectedLead(null); setIsEditingLead(false); }}
             >
-              ← Back
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              <span>Back</span>
             </button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--color-gold)' }}>
-                {isEditingLead ? 'Edit Lead Details' : selectedLead.personalInfo.name}
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="badge badge-new" style={{ fontSize: '0.7rem' }}>ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}</span>
-                <span className={`badge badge-${selectedLead.status}`} style={{ fontSize: '0.7rem' }}>{selectedLead.status.toUpperCase()}</span>
-                <span className="badge" style={{ fontSize: '0.7rem', background: selectedLead.type === 'buy' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: selectedLead.type === 'buy' ? '#60a5fa' : '#34d399', border: `1px solid ${selectedLead.type === 'buy' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
-                  {selectedLead.type.toUpperCase()}
-                </span>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-gold-dark)',
+                color: 'var(--color-black-pure)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '1rem',
+                flexShrink: 0
+              }}>
+                {clientInitials}
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--color-white)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {isEditingLead ? 'Edit Lead Details' : selectedLead.personalInfo.name}
+                  </h2>
+                  
+                  {!isEditingLead ? (
+                    <div className="crm-actions-row">
+                      <a href={`tel:${selectedLead.personalInfo.phone}`} className="crm-action-btn" title="Call Client">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      </a>
+                      <a 
+                        href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="crm-action-btn"
+                        title="WhatsApp Client"
+                        style={{ color: '#25D366' }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                      </a>
+                      <button onClick={handleCopyLeadDetails} className="crm-action-btn" title="Copy Details">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                      <button onClick={handlePrintLead} className="crm-action-btn" title="Print Details">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      </button>
+                      <button onClick={startEditingLead} className="crm-action-btn" title="Edit Lead">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>
+                      </button>
+                      <button onClick={() => { if(confirm("Are you sure you want to delete this lead?")) { handleDeleteLead(selectedLead._id || selectedLead.id); setSelectedLead(null); } }} className="crm-action-btn btn-danger-outline" title="Delete Lead">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button className="btn btn-primary" style={{ width: 'auto', padding: '0.3rem 0.75rem', fontSize: '0.8rem' }} onClick={handleSaveLeadEdits}>
+                        Save
+                      </button>
+                      <button className="btn btn-secondary" style={{ width: 'auto', padding: '0.3rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setIsEditingLead(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <span className="badge badge-new" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>ID: {(selectedLead._id || selectedLead.id).substring(0, 8)}</span>
+                  <span className={`badge badge-${selectedLead.status}`} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>{selectedLead.status.toUpperCase()}</span>
+                  <span className="badge" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', background: selectedLead.type === 'buy' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: selectedLead.type === 'buy' ? '#60a5fa' : '#34d399', border: `1px solid ${selectedLead.type === 'buy' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}` }}>
+                    {selectedLead.type.toUpperCase()}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Status:</span>
-            <select
-              value={selectedLead.status}
-              onChange={(e) => handleUpdateStatus(selectedLead._id || selectedLead.id, e.target.value)}
-              className="form-control"
-              style={{ width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-            >
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
-            </select>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Status:</span>
+              <select
+                value={selectedLead.status}
+                onChange={(e) => handleUpdateStatus(selectedLead._id || selectedLead.id, e.target.value)}
+                className="form-control"
+                style={{ width: 'auto', padding: '0.3rem 1.8rem 0.3rem 0.6rem', fontSize: '0.8rem', backgroundPosition: 'right 0.4rem center' }}
+              >
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="qualified">Qualified</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* SINGLE COLUMN CONTENT - SCROLLS NATURALLY */}
         <div style={{ 
           flex: 1, 
-          padding: '2.5rem 2rem 6rem 2rem', 
+          padding: '1.25rem', 
           maxWidth: '900px', 
           width: '100%', 
           margin: '0 auto', 
           display: 'flex', 
           flexDirection: 'column', 
-          gap: '2rem' 
+          gap: '1.25rem' 
         }}>
           
           {/* 1. PERSONAL DETAILS CARD */}
-          <div className="glass-panel" style={{ padding: '2rem' }}>
-            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+          <div className="glass-panel" style={{ padding: '1.25rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
               Personal Details
             </h3>
             
             {isEditingLead ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Full Name</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.3rem' }}>Full Name</label>
                   <input 
                     type="text" 
                     className="form-control" 
@@ -1137,7 +1211,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Mobile Number</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.3rem' }}>Mobile Number</label>
                   <input 
                     type="tel" 
                     className="form-control" 
@@ -1147,7 +1221,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Email Address</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.3rem' }}>Email Address</label>
                   <input 
                     type="email" 
                     className="form-control" 
@@ -1157,24 +1231,22 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Full Name</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.name}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Phone Number</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.phone}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Email Address</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.personalInfo.email || 'Not Provided'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Date Received</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{new Date(selectedLead.createdAt).toLocaleString()}</strong>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Full Name</span>
+                  <strong style={{ fontSize: '1rem' }}>{selectedLead.personalInfo.name}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Phone Number</span>
+                  <strong style={{ fontSize: '1rem' }}>{selectedLead.personalInfo.phone}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Email Address</span>
+                  <strong style={{ fontSize: '1rem' }}>{selectedLead.personalInfo.email || 'Not Provided'}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Date Received</span>
+                  <strong style={{ fontSize: '1rem' }}>{new Date(selectedLead.createdAt).toLocaleString()}</strong>
                 </div>
               </div>
             )}
@@ -1182,94 +1254,104 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
 
           {/* 2. PROPERTY DETAILS CARD */}
           {((selectedLead.type === 'buy' && selectedLead.buyDetails) || (selectedLead.type === 'sell' && selectedLead.sellDetails)) && (
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
-                Property Specifications
+            <div className="glass-panel" style={{ padding: '1.25rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
+                Property Details
               </h3>
               
               {selectedLead.type === 'buy' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Preferred Location</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.preferredLocation}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Preferred Location</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.buyDetails.preferredLocation}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Type</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
+                    <strong style={{ fontSize: '1rem' }}>
+                      {selectedLead.buyDetails.propertyType === 'Others' ? `Others (${selectedLead.buyDetails.otherPropertyType})` : selectedLead.buyDetails.propertyType}
+                    </strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>BHK Requirement</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.bhk}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>BHK Requirement</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.buyDetails.bhk}</strong>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Location</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.location}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Location</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.sellDetails.location}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Type</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Type</span>
+                    <strong style={{ fontSize: '1rem' }}>
+                      {selectedLead.sellDetails.propertyType === 'Others' ? `Others (${selectedLead.sellDetails.otherPropertyType})` : selectedLead.sellDetails.propertyType}
+                    </strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Construction Type</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.constructionType || 'N/A'}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Construction Type</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.sellDetails.constructionType || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Size</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.size || 'N/A'}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Size</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.sellDetails.size || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Facing Direction</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.facing || 'N/A'}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Facing Direction</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.sellDetails.facing || 'N/A'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Property Age</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{selectedLead.sellDetails.age || 'N/A'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Expected Selling Price</span>
-                    <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Property Age</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.sellDetails.age || 'N/A'}</strong>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* 3. BUDGET & REQUIREMENTS CARD */}
-          {selectedLead.type === 'buy' && selectedLead.buyDetails && (
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
-                Budget & Requirements
+          {/* 3. BUDGET CARD */}
+          {((selectedLead.type === 'buy' && selectedLead.buyDetails) || (selectedLead.type === 'sell' && selectedLead.sellDetails)) && (
+            <div className="glass-panel" style={{ padding: '1.25rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
+                Budget & Readiness
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Min Budget</span>
-                  <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong>
+              
+              {selectedLead.type === 'buy' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Min Budget</span>
+                    <strong style={{ fontSize: '1rem' }}>₹{selectedLead.buyDetails.minBudget?.toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Max Budget</span>
+                    <strong style={{ fontSize: '1rem' }}>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Loan Required</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.buyDetails.loanRequired}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Readiness to Move</span>
+                    <strong style={{ fontSize: '1rem' }}>{selectedLead.buyDetails.readyToMove}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Max Budget</span>
-                  <strong style={{ fontSize: '1.1rem' }}>₹{selectedLead.buyDetails.maxBudget?.toLocaleString()}</strong>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.2rem' }}>Expected Selling Price</span>
+                    <strong style={{ fontSize: '1rem' }}>₹{selectedLead.sellDetails.expectedPrice?.toLocaleString()}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Loan Required</span>
-                  <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.loanRequired}</strong>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', display: 'block', marginBottom: '0.4rem' }}>Readiness to Move</span>
-                  <strong style={{ fontSize: '1.1rem' }}>{selectedLead.buyDetails.readyToMove}</strong>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* 4. ADDITIONAL NOTES CARD */}
-          <div className="glass-panel" style={{ padding: '2rem' }}>
-            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+          <div className="glass-panel" style={{ padding: '1.25rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
               Additional Notes
             </h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', margin: 0, lineHeight: 1.6 }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
               {selectedLead.type === 'buy' 
                 ? (selectedLead.buyDetails.additionalRequirements || 'No additional requirements specified.') 
                 : (selectedLead.sellDetails.additionalInformation || 'No additional information specified.')}
@@ -1278,17 +1360,17 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
 
           {/* 5. UPLOADED IMAGES CARD */}
           {selectedLead.type === 'sell' && selectedLead.sellDetails?.images && selectedLead.sellDetails.images.length > 0 && (
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+            <div className="glass-panel" style={{ padding: '1.25rem' }}>
+              <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
                 Uploaded Images ({selectedLead.sellDetails.images.length})
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
                 {selectedLead.sellDetails.images.map((imgUrl, index) => (
-                  <a key={index} href={`${apiBaseUrl}${imgUrl}`} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                  <a key={index} href={getImageUrl(imgUrl)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 'var(--border-radius-sm)', overflow: 'hidden', border: '1px solid var(--color-border)', height: '110px' }}>
                     <img 
-                      src={`${apiBaseUrl}${imgUrl}`} 
+                      src={getImageUrl(imgUrl)} 
                       alt={`Property ${index + 1}`} 
-                      style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block', transition: 'transform 0.2s' }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.2s' }}
                       onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                       onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     />
@@ -1299,33 +1381,33 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
           )}
 
           {/* 6. FOLLOW-UP HISTORY & SCHEDULE */}
-          <div className="glass-panel" style={{ padding: '2rem' }}>
-            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.5rem' }}>
+          <div className="glass-panel" style={{ padding: '1.25rem' }}>
+            <h3 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em', borderBottom: '1px solid rgba(197,168,128,0.1)', paddingBottom: '0.4rem' }}>
               Follow-up Action Log
             </h3>
             
             {followups.length > 0 ? (
-              <div className="timeline" style={{ marginBottom: '2.5rem' }}>
+              <div className="timeline" style={{ marginBottom: '1.5rem' }}>
                 {followups.map(item => (
-                  <div key={item._id || item.id} className="timeline-item">
-                    <div className="timeline-dot"></div>
+                  <div key={item._id || item.id} className="timeline-item" style={{ paddingLeft: '1.5rem', position: 'relative', marginBottom: '1rem' }}>
+                    <div className="timeline-dot" style={{ left: 0, top: '4px' }}></div>
                     <div className="timeline-content">
-                      <div className="timeline-date" style={{ color: 'var(--color-gold)', fontSize: '0.8rem' }}>{new Date(item.date).toLocaleString()}</div>
-                      <div className="timeline-notes" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>{item.notes}</div>
+                      <div className="timeline-date" style={{ color: 'var(--color-gold)', fontSize: '0.75rem' }}>{new Date(item.date).toLocaleString()}</div>
+                      <div className="timeline-notes" style={{ fontSize: '0.85rem', marginTop: '0.1rem', color: 'var(--color-text-secondary)' }}>{item.notes}</div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '2.5rem' }}>No followup actions logged yet.</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>No followup actions logged yet.</p>
             )}
 
-            <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.8rem', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+            <h4 style={{ color: 'var(--color-gold)', textTransform: 'uppercase', fontSize: '0.75rem', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>
               Schedule Next Follow-up
             </h4>
-            <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form onSubmit={handleAddFollowup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Next Action / Followup Date</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.3rem' }}>Next Action / Followup Date</label>
                 <input 
                   type="datetime-local" 
                   className="form-control"
@@ -1336,7 +1418,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Reminder Note / Progress Description</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.3rem' }}>Reminder Note / Progress Description</label>
                 <input 
                   type="text"
                   className="form-control"
@@ -1346,65 +1428,12 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', alignSelf: 'flex-start' }}>
+              <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', alignSelf: 'flex-start' }}>
                 Schedule Note
               </button>
             </form>
           </div>
 
-        </div>
-
-        {/* STICKY FOOTER ACTIONS */}
-        <div style={{
-          position: 'sticky',
-          bottom: 0,
-          left: 0,
-          width: '100%',
-          zIndex: 100,
-          background: 'var(--color-black-card)',
-          borderTop: '1px solid var(--color-border)',
-          padding: '1rem 2rem',
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.4)'
-        }}>
-          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-            {isEditingLead ? (
-              <>
-                <button className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handleSaveLeadEdits}>
-                  Save Changes
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={() => setIsEditingLead(false)}>
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <a href={`tel:${selectedLead.personalInfo.phone}`} className="btn btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.5rem', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Call Client
-                </a>
-                <a 
-                  href={`https://wa.me/91${selectedLead.personalInfo.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(selectedLead.personalInfo.name)},%20this%20is%20Mahesh%20Realty%20Verse.%20We%20received%20your%20property%20request%20and%20wanted%20to%20follow%20up.`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="btn btn-secondary" 
-                  style={{ textDecoration: 'none', padding: '0.6rem 1.5rem', fontSize: '0.9rem', borderColor: '#25D366', color: '#25D366', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  WhatsApp
-                </a>
-                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handleCopyLeadDetails}>
-                  Copy Details
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={handlePrintLead}>
-                  Print
-                </button>
-                <button className="btn btn-secondary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }} onClick={startEditingLead}>
-                  Edit
-                </button>
-                <button className="btn btn-danger" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem', marginLeft: 'auto' }} onClick={() => { handleDeleteLead(selectedLead._id || selectedLead.id); setSelectedLead(null); }}>
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -1419,7 +1448,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
           <div style={{ width: '34px', height: '34px' }}>
             <img src={logo} className="mrv-logo" style={{ animation: 'none' }} alt="MRV Logo" />
           </div>
-          <span style={{ fontSize: '1.1rem', fontFamily: 'var(--font-logo)', fontWeight: '700', letterSpacing: '0.05em' }} className="text-gold">MRV CRM</span>
+          <span style={{ fontSize: '1.1rem', fontFamily: 'var(--font-logo)', fontWeight: '700', letterSpacing: '0.05em' }} className="text-gold">MRV Admin</span>
         </div>
         <button 
           className="mobile-nav-toggle btn-secondary" 
@@ -1454,7 +1483,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
           <div style={{ width: '42px', height: '42px' }}>
             <img src={logo} className="mrv-logo" style={{ animation: 'none' }} alt="MRV Logo" />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontFamily: 'var(--font-logo)', fontWeight: '800', letterSpacing: '0.05em', margin: 0 }} className="text-gold">MRV CRM</h2>
+          <h2 style={{ fontSize: '1.35rem', fontFamily: 'var(--font-logo)', fontWeight: '800', letterSpacing: '0.05em', margin: 0 }} className="text-gold">MRV Admin</h2>
         </div>
 
         <nav className="admin-menu" style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.4rem' }}>
@@ -1488,12 +1517,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
           >
             Property Types
           </button>
-          <button 
-            className={`admin-menu-item btn-secondary ${activeTab === 'admin_management' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('admin_management'); setSidebarOpen(false); }}
-          >
-            Admin Management
-          </button>
+
           <button 
             className={`admin-menu-item btn-secondary ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
@@ -1521,7 +1545,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
         {/* HEADER & NOTIFICATION SYSTEM */}
         <header className="admin-header">
           <div>
-            <h1 style={{ fontSize: '1.8rem', textAlign: 'left' }}>CRM Control Panel</h1>
+            <h1 style={{ fontSize: '1.8rem', textAlign: 'left' }}>Control Panel</h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Welcome to Mahesh Realty Verse Admin Management System</p>
           </div>
 
@@ -2126,173 +2150,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
               </div>
             )}
 
-            {/* VIEW TAB: ADMIN MANAGEMENT */}
-            {activeTab === 'admin_management' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', animation: 'fadeIn var(--transition-fast)' }}>
-                {/* Form block */}
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left' }}>
-                  <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem' }} className="text-gold">
-                    {adminEditId ? 'Edit Admin Account' : 'Register New Admin'}
-                  </h3>
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                    Add or modify administrative credentials. Disable accounts to instantly block CRM logins.
-                  </p>
 
-                  {adminError && (
-                    <div className="text-error" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
-                      Error: {adminError}
-                    </div>
-                  )}
-                  {adminSuccess && (
-                    <div className="text-success" style={{ marginBottom: '1rem', fontSize: '0.85rem', fontWeight: 600 }}>
-                      {adminSuccess}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleSaveAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Username</label>
-                      <input 
-                        type="text"
-                        className="form-control"
-                        value={adminUsername}
-                        onChange={(e) => setAdminUsername(e.target.value)}
-                        placeholder="e.g. janesmith"
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>Email Address</label>
-                      <input 
-                        type="email"
-                        className="form-control"
-                        value={adminEmail}
-                        onChange={(e) => setAdminEmail(e.target.value)}
-                        placeholder="e.g. jane@maheshverse.com"
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.8rem' }}>
-                        Password {adminEditId && <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(Leave blank to keep current)</span>}
-                      </label>
-                      <input 
-                        type="password"
-                        className="form-control"
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder={adminEditId ? "New password (optional)" : "Enter account password"}
-                        required={!adminEditId}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="checkbox"
-                          checked={adminIsDisabled}
-                          onChange={(e) => setAdminIsDisabled(e.target.checked)}
-                          style={{ width: '16px', height: '16px', accentColor: 'var(--color-gold)' }}
-                          id="admin-disabled-check"
-                        />
-                        <label htmlFor="admin-disabled-check" style={{ fontSize: '0.85rem', cursor: 'pointer', margin: 0 }}>
-                          Deactivate Account
-                        </label>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                      <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
-                        {adminEditId ? 'Save Changes' : 'Create Admin'}
-                      </button>
-                      {adminEditId && (
-                        <button 
-                          type="button" 
-                          className="btn btn-secondary" 
-                          style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}
-                          onClick={() => {
-                            setAdminEditId(null);
-                            setAdminUsername('');
-                            setAdminEmail('');
-                            setAdminPassword('');
-                            setAdminRole('admin');
-                            setAdminIsDisabled(false);
-                            setAdminError('');
-                            setAdminSuccess('');
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </form>
-                </div>
-
-                {/* List block */}
-                <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }} className="text-gold">
-                    CRM Administrator Accounts
-                  </h3>
-
-                  <div className="table-responsive">
-                    <table className="admin-table" style={{ fontSize: '0.85rem' }}>
-                      <thead>
-                        <tr>
-                          <th>Username</th>
-                          <th>Email</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminUsers.length === 0 ? (
-                          <tr>
-                            <td colSpan="4" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '1rem' }}>
-                              No administrator accounts registered.
-                            </td>
-                          </tr>
-                        ) : (
-                          adminUsers.map(u => (
-                            <tr key={u.id || u._id}>
-                              <td style={{ fontWeight: 600 }}>{u.username}</td>
-                              <td>{u.email}</td>
-                              <td>
-                                <span 
-                                  className={u.isDisabled ? 'text-error' : 'text-success'} 
-                                  style={{ fontWeight: 'bold', fontSize: '0.75rem' }}
-                                >
-                                  {u.isDisabled ? 'DEACTIVATED' : 'ACTIVE'}
-                                </span>
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                                  <button 
-                                    className="btn btn-secondary" 
-                                    style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }} 
-                                    onClick={() => handleEditAdminClick(u)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button 
-                                    className="btn btn-danger" 
-                                    style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem' }} 
-                                    onClick={() => handleDeleteAdmin(u.id || u._id)}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* VIEW TAB: SETTINGS CONFIG */}
             {activeTab === 'settings' && (
@@ -2376,7 +2234,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                   </div>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }} className="text-gold">Tabular CSV Format</h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-                    Export all current leads into a plain text comma-separated values document. Ideal for importing into arbitrary CRM platforms.
+                    Export all current leads into a plain text comma-separated values document. Ideal for importing into arbitrary spreadsheet applications.
                   </p>
                   <button className="btn btn-primary" style={{ width: '100%', marginTop: 'auto', padding: '0.6rem' }} onClick={() => handleExportLeads('csv')}>
                     Export CSV Document
@@ -2395,7 +2253,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                   </div>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }} className="text-gold">Excel Spreadsheet</h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-                    Export complete CRM lead directories formatted in Excel XLS format. Contains detailed contact and requirement columns.
+                    Export complete lead directories formatted in Excel XLS format. Contains detailed contact and requirement columns.
                   </p>
                   <button className="btn btn-primary" style={{ width: '100%', marginTop: 'auto', padding: '0.6rem' }} onClick={() => handleExportLeads('excel')}>
                     Export XLS Spreadsheet
@@ -2411,7 +2269,7 @@ export default function AdminDashboard({ token, onLogout, apiBaseUrl }) {
                   </div>
                   <h3 style={{ fontSize: '1.25rem', margin: 0 }} className="text-gold">Printable PDF Ledger</h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-                    Trigger system print dialog to save the leads registry as a formatted PDF layout. Auto-hides CRM dashboards/sidebars.
+                    Trigger system print dialog to save the leads registry as a formatted PDF layout. Auto-hides dashboards and sidebars.
                   </p>
                   <button className="btn btn-primary" style={{ width: '100%', marginTop: 'auto', padding: '0.6rem' }} onClick={() => handleExportLeads('pdf')}>
                     Print Ledger Layout
