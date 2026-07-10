@@ -882,8 +882,8 @@ textarea.form-control {
   border-radius: var(--border-radius-lg);
   width: 100%;
   max-width: 800px;
-  height: 90vh;
-  max-height: 90vh;
+  height: 85vh;
+  max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1289,6 +1289,18 @@ textarea.form-control {
   }
   .form-control {
     width: 100% !important;
+  }
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-container {
+    height: 90%;
+    max-height: 90%;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
   }
 }
 
