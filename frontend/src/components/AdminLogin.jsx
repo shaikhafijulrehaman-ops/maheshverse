@@ -197,13 +197,13 @@ export default function AdminLogin({ onLoginSuccess, onCancel, apiBaseUrl }) {
         {!isForgotMode ? (
           <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
             <div className="form-group">
-              <label className="form-label">Username / Email</label>
+              <label className="form-label">Email Address</label>
               <input 
                 type="text" 
                 className="form-control"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter email / username"
+                placeholder="Enter your email address"
                 required
               />
             </div>

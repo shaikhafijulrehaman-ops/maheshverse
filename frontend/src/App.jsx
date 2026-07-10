@@ -5,7 +5,7 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import { supabase, supabaseClient } from './utils/supabaseClient';
 
-const API_BASE_URL = 'http://localhost:5050';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5050';
 
 function AppContent() {
   const [token, setToken] = useState(localStorage.getItem('mrv_admin_token') || null);
