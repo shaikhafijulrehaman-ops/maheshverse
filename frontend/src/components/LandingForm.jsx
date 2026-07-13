@@ -726,8 +726,14 @@ export default function LandingForm({ apiBaseUrl }) {
               className="mrv-logo"
             />
           </div>
-          <h1 className="text-gold branding-title">Find Your Perfect Property</h1>
-          <p className="subtitle branding-subtitle">Our team will contact you within 24 hours.</p>
+          <h1 className="text-gold branding-title">
+            {leadType === 'sell' ? 'Sell Your Property with Confidence' : 'Find Your Perfect Property'}
+          </h1>
+          <p className="subtitle branding-subtitle">
+            {leadType === 'sell' 
+              ? 'Get the best market value for your property. Submit your details and our team will connect with you shortly.' 
+              : 'Our team will contact you within 24 hours.'}
+          </p>
         </div>
 
         {/* Step 1: Selector Cards */}
